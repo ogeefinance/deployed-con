@@ -1,37 +1,49 @@
 // SPDX-License-Identifier: MIT
 
 
+/**
+*                                                       #
+*                                                      ###
+*                                                    #######
+*                                                   #########
+*                                                  ###########
+*                                                ###############
+*                                               #################
+*                                             #####################
+*                                            #######################
+*                                          ###########################
+*                                       #################################
+*                                    #######################################
+*                                ######################  ########################
+*                           #########################      *#########################
+*                      ############################           ############################
+*                   ############################                 ############################
+*                ############################                       ############################
+*              #########################                                 #########################
+*            #####################                                            #####################
+*           ##################                                                     ##################
+*          ################                                                           ################
+*         ###############                                                               ###############
+*        ###############                                                                 ###############
+*       ###############                                                                   ###############
+*      ###############                                                                     ##############
+*      ###############                                                                     ##############
+*
+*
+* :'#######:::'######:::'########:'########::::'########:'####:'##::: ##::::'###::::'##::: ##::'######::'########:
+* '##.... ##:'##... ##:: ##.....:: ##.....::::: ##.....::. ##:: ###:: ##:::'## ##::: ###:: ##:'##... ##: ##.....::
+*  ##:::: ##: ##:::..::: ##::::::: ##:::::::::: ##:::::::: ##:: ####: ##::'##:. ##:: ####: ##: ##:::..:: ##:::::::
+*  ##:::: ##: ##::'####: ######::: ######:::::: ######:::: ##:: ## ## ##:'##:::. ##: ## ## ##: ##::::::: ######:::
+*  ##:::: ##: ##::: ##:: ##...:::: ##...::::::: ##...::::: ##:: ##. ####: #########: ##. ####: ##::::::: ##...::::
+*  ##:::: ##: ##::: ##:: ##::::::: ##:::::::::: ##:::::::: ##:: ##:. ###: ##.... ##: ##:. ###: ##::: ##: ##:::::::
+* . #######::. ######::: ########: ########:::: ##:::::::'####: ##::. ##: ##:::: ##: ##::. ##:. ######:: ########:
+* :.......::::......::::........::........:::::..::::::::....::..::::..::..:::::..::..::::..:::......:::........::
+*
+**/
+
 
 pragma solidity 0.6.12;
 
-
-
-interface IHRC20 {
-
-    function totalSupply() external view returns (uint256);
-
-    function decimals() external view returns (uint8);
-
-    function symbol() external view returns (string memory);
-
-    function name() external view returns (string memory);
-
-    function getOwner() external view returns (address);
-
-    function balanceOf(address account) external view returns (uint256);
-
-    function transfer(address recipient, uint256 amount) external returns (bool);
-
-    function allowance(address _owner, address spender) external view returns (uint256);
-
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-
-    event Transfer(address indexed from, address indexed to, uint256 value);
-
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-}
 
 
 library Address {
@@ -160,6 +172,7 @@ library SafeMath {
     }
 }
 
+
 abstract contract Context {
     function _msgSender() internal view virtual returns (address payable) {
         return msg.sender;
@@ -170,8 +183,6 @@ abstract contract Context {
         return msg.data;
     }
 }
-
-
 
 abstract contract Ownable is Context {
     address private _owner;
@@ -204,6 +215,8 @@ abstract contract Ownable is Context {
         _owner = newOwner;
     }
 }
+
+
 
 
 
@@ -249,12 +262,40 @@ library SafeHRC20 {
 }
 
 
+interface IHRC20 {
+
+    function totalSupply() external view returns (uint256);
+
+    function decimals() external view returns (uint8);
+
+    function symbol() external view returns (string memory);
+
+    function name() external view returns (string memory);
+
+    function getOwner() external view returns (address);
+
+    function balanceOf(address account) external view returns (uint256);
+
+    function transfer(address recipient, uint256 amount) external returns (bool);
+
+    function allowance(address _owner, address spender) external view returns (uint256);
+
+    function approve(address spender, uint256 amount) external returns (bool);
+
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+}
+
+
 contract HRC20 is Context, IHRC20, Ownable {
     using SafeMath for uint256;
-    using Address for address;
 
-    mapping (address => uint256) private _balances;
-    mapping (address => mapping (address => uint256)) private _allowances;
+    mapping(address => uint256) private _balances;
+
+    mapping(address => mapping(address => uint256)) private _allowances;
 
     uint256 private _totalSupply;
 
@@ -262,14 +303,7 @@ contract HRC20 is Context, IHRC20, Ownable {
     string private _symbol;
     uint8 private _decimals;
 
-    uint8 public txFee = 15;
-    address public feeDistributor;
-
-    mapping(address => bool) public feelessSender;
-    mapping(address => bool) public feelessReciever;
-    bool public canWhitelist = true;
-
-    constructor (string memory name, string memory symbol) public {
+    constructor(string memory name, string memory symbol) public {
         _name = name;
         _symbol = symbol;
         _decimals = 18;
@@ -338,105 +372,43 @@ contract HRC20 is Context, IHRC20, Ownable {
         return true;
     }
 
+    function _transfer (address sender, address recipient, uint256 amount) internal {
+        require(sender != address(0), 'HRC20: transfer from the zero address');
+        require(recipient != address(0), 'HRC20: transfer to the zero address');
 
-    // assign a new transactionfee
-    function setFee(uint8 _newTxFee) public onlyOwner {
-        txFee = _newTxFee;
+        _balances[sender] = _balances[sender].sub(amount, 'HRC20: transfer amount exceeds balance');
+        _balances[recipient] = _balances[recipient].add(amount);
+        emit Transfer(sender, recipient, amount);
     }
 
-
-    // fee goes to ZERO address as burn process
-    function setFeeDistributor(address _distributor) public onlyOwner {
-        feeDistributor = _distributor;
-        _distributor = 0x0000000000000000000000000000000000000000;
-    }
-
-
-    function setFeelessSender(address _sender, bool _feeless) public onlyOwner {
-        require(!_feeless || _feeless && canWhitelist, "cannot add to whitelist");
-        feelessSender[_sender] = _feeless;
-    }
-
-
-    function setFeelessReciever(address _recipient, bool _feeless) public onlyOwner {
-        require(!_feeless || _feeless && canWhitelist, "cannot add to whitelist");
-        feelessReciever[_recipient] = _feeless;
-    }
-
-    function renounceWhitelist() public onlyOwner {
-
-        canWhitelist = false;
-    }
-
-    function calculateAmountsAfterFee(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) public view returns (uint256 transferToAmount, uint256 transferToFeeDistributorAmount) {
-
-        if (feelessSender[sender] || feelessReciever[recipient]) {
-            return (amount, 0);
-        }
-
-        // calculate fees and amounts
-        uint256 fee = amount.mul(txFee).div(1000);
-        return (amount.sub(fee), fee);
-    }
-
-
-    function _transfer(address sender, address recipient, uint256 amount) internal virtual {
-        require(sender != address(0), "HRC20: transfer from the zero address");
-        require(recipient != address(0), "HRC20: transfer to the zero address");
-        require(amount > 1000, "amount to small, maths will break");
-        _beforeTokenTransfer(sender, recipient, amount);
-
-        _balances[sender] = _balances[sender].sub(amount, "HRC20: transfer amount exceeds balance");
-
-        (uint256 transferToAmount, uint256 transferToFeeDistributorAmount) = calculateAmountsAfterFee(sender, recipient, amount);
-
-        _balances[recipient] = _balances[recipient].add(transferToAmount);
-        emit Transfer(sender, recipient, transferToAmount);
-
-        if(transferToFeeDistributorAmount > 0){
-            _balances[feeDistributor] = _balances[feeDistributor].add(transferToFeeDistributorAmount);
-            emit Transfer(sender, feeDistributor, transferToFeeDistributorAmount);
-        }
-    }
-
-    function _mint(address account, uint256 amount) internal virtual {
-        require(account != address(0), "HRC20: mint to the zero address");
-
-        _beforeTokenTransfer(address(0), account, amount);
+    function _mint(address account, uint256 amount) internal {
+        require(account != address(0), 'HRC20: mint to the zero address');
 
         _totalSupply = _totalSupply.add(amount);
         _balances[account] = _balances[account].add(amount);
         emit Transfer(address(0), account, amount);
     }
 
-    function _burn(address account, uint256 amount) internal virtual {
-        require(account != address(0), "HRC20: burn from the zero address");
+    function _burn(address account, uint256 amount) internal {
+        require(account != address(0), 'HRC20: burn from the zero address');
 
-        _beforeTokenTransfer(account, address(0), amount);
-
-        _balances[account] = _balances[account].sub(amount, "HRC20: burn amount exceeds balance");
+        _balances[account] = _balances[account].sub(amount, 'HRC20: burn amount exceeds balance');
         _totalSupply = _totalSupply.sub(amount);
         emit Transfer(account, address(0), amount);
     }
 
-    function _approve(address owner, address spender, uint256 amount) internal virtual {
-        require(owner != address(0), "HRC20: approve from the zero address");
-        require(spender != address(0), "HRC20: approve to the zero address");
+    function _approve (address owner, address spender, uint256 amount) internal {
+        require(owner != address(0), 'HRC20: approve from the zero address');
+        require(spender != address(0), 'HRC20: approve to the zero address');
 
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
     }
 
-     function _burnFrom(address account, uint256 amount) internal {
+    function _burnFrom(address account, uint256 amount) internal {
         _burn(account, amount);
         _approve(account, _msgSender(), _allowances[account][_msgSender()].sub(amount, 'HRC20: burn amount exceeds allowance'));
     }
-
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual { }
 }
 
 
@@ -650,7 +622,7 @@ contract OgeeYield is HRC20('Ogee Yield Token', 'OYT') {
         _mint(_to, _amount);
         _moveDelegates(address(0), _delegates[_to], _amount);
     }
-    /// @notice A record of each accounts delegate
+    /// @dev A record of each accounts delegate
     mapping (address => address) internal _delegates;
 
     /// @notice A checkpoint for marking number of votes from a given block
